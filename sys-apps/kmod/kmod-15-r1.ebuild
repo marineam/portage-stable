@@ -1,17 +1,16 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/sys-apps/kmod/kmod-9999.ebuild,v 1.68 2014/02/05 09:46:31 ssuominen Exp $
+# $Header: /var/cvsroot/gentoo-x86/sys-apps/kmod/kmod-15-r1.ebuild,v 1.3 2014/01/18 04:33:50 vapier Exp $
 
 EAPI=5
-inherit bash-completion-r1 eutils multilib
+inherit autotools eutils libtool multilib toolchain-funcs versionator
 
-if [[ ${PV} == 9999* ]]; then
+if [[ ${PV} == 9999 ]]; then
 	EGIT_REPO_URI="git://git.kernel.org/pub/scm/utils/kernel/${PN}/${PN}.git"
-	inherit autotools git-2
+	inherit git-2
 else
 	SRC_URI="mirror://kernel/linux/utils/kernel/kmod/${P}.tar.xz"
-	KEYWORDS="~alpha ~amd64 ~arm ~arm64 ~hppa ~ia64 ~m68k ~mips ~ppc ~ppc64 ~s390 ~sh ~sparc ~x86"
-	inherit libtool
+	KEYWORDS="alpha amd64 arm arm64 hppa ia64 m68k ~mips ~ppc ~ppc64 s390 sh ~sparc x86"
 fi
 
 DESCRIPTION="library and tools for managing linux kernel modules"
@@ -38,6 +37,11 @@ DEPEND="${RDEPEND}
 	lzma? ( virtual/pkgconfig )
 	zlib? ( virtual/pkgconfig )"
 
+pkg_setup() {
+	[[ $(tc-getCPP) == *cpp ]] && ! version_is_at_least 4.6 $(gcc-version) && \
+		die "You need at least GNU GCC 4.6.x to build this package." #481020
+}
+
 src_prepare() {
 	if [ ! -e configure ]; then
 		if use doc; then
@@ -60,25 +64,14 @@ src_prepare() {
 src_configure() {
 	econf \
 		--bindir=/bin \
-		--with-rootlibdir="/$(get_libdir)" \
+		--with-rootlibdir=/$(get_libdir) \
 		--enable-shared \
 		$(use_enable static-libs static) \
 		$(use_enable tools) \
 		$(use_enable debug) \
 		$(use_enable doc gtk-doc) \
 		$(use_with lzma xz) \
-		$(use_with zlib) \
-		--with-bashcompletiondir="$(get_bashcompdir)"
-}
-
-src_compile() {
-	if [[ ${PV} == 9999* ]]; then
-		default
-	else
-		# Force -j1 because of -15-dynamic-kmod.patch, likely caused by lack of eautoreconf
-		# wrt #494806
-		emake -j1
-	fi
+		$(use_with zlib)
 }
 
 src_install() {
